@@ -1,33 +1,31 @@
 NASM = nasm
 CC = gcc
+CFLAGS = -m32 -ffreestanding -nostdlib -fno-pie -fno-stack-protector -Wall -Wextra -O0 -g -std=c11
 
-CFLAGS = -m32 -ffreestanding -nostdlib -fno-pie -fno-stack-protector \
-         -Wall -Wextra -O0 -g -std=c11
-
-all: os-image.bin
+all: disk.img
 
 bootloader.bin: bootloader.asm
 	$(NASM) -f bin $< -o $@
 
-kernel.o: kernel.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
 kernel_entry.o: kernel_entry.asm
 	$(NASM) -f elf32 $< -o $@
+
+kernel.o: kernel.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
 kernel.bin: kernel_entry.o kernel.o linker.ld
 	$(CC) -m32 -T linker.ld -nostdlib -ffreestanding -o kernel.elf kernel_entry.o kernel.o
 	objcopy -O binary kernel.elf $@
 
-os-image.bin: bootloader.bin kernel.bin
-	dd if=/dev/zero of=$@ bs=1024 count=1440
+disk.img: bootloader.bin kernel.bin
+	dd if=/dev/zero of=$@ bs=1M count=64
 	dd if=bootloader.bin of=$@ bs=512 count=1 conv=notrunc
 	dd if=kernel.bin of=$@ bs=512 seek=1 conv=notrunc
 
 clean:
-	rm -f *.o *.bin *.elf os-image.bin
+	rm -f *.o *.bin *.elf disk.img
 
-run: os-image.bin
-	qemu-system-i386 -drive format=raw,file=os-image.bin -boot order=a
+run: disk.img
+	qemu-system-i386 -drive file=disk.img,format=raw,index=0,media=disk -m 256
 
 .PHONY: all clean run

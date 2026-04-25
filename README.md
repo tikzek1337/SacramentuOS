@@ -1,4 +1,4 @@
-# SacramentuOS v0.0.1
+# SacramentuOS v0.0.2
 
 Создатель: tikzek  
 GitHub: https://github.com/tikzek1337/SacramentuOS  
@@ -34,3 +34,5 @@ Telegram: t.me/SacramentuOS
 sudo pacman -S nasm qemu-desktop git base-devel gcc-multilib
 make
 make run
+
+## Этот файл был написан ИИ, если что)
