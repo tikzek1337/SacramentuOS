@@ -1,4 +1,4 @@
-# SacramentuOS v0.0.2
+# SacramentuOS v0.0.4
 
 Создатель: tikzek  
 GitHub: https://github.com/tikzek1337/SacramentuOS  
