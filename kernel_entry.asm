@@ -1,6 +1,6 @@
 [bits 32]
 [extern kmain]
-[extern irq0_handler]   ; обработчик таймера
+[extern irq0_handler]
 
 global _start
 global idt_load
@@ -10,7 +10,6 @@ _start:
     call kmain
     jmp $
 
-; Заглушка для IRQ0 – вызывает C-функцию, затем отправляет EOI
 irq0_stub:
     pusha
     call irq0_handler
@@ -19,8 +18,7 @@ irq0_stub:
     popa
     iret
 
-; Процедура загрузки IDT (параметр: адрес дескриптора idt_ptr)
 idt_load:
-    mov eax, [esp + 4]   ; адрес idt_ptr
+    mov eax, [esp + 4]
     lidt [eax]
     ret

@@ -1,6 +1,6 @@
 ; ========================================================
 ; bootloader.asm
-; Загрузчик SacramentuOS v0.0.2
+; Загрузчик SacramentuOS v0.0.4
 ; ========================================================
 [org 0x7c00]
 [bits 16]
@@ -18,7 +18,7 @@ start:
     mov ss, ax
     mov sp, 0x7C00
 
-    ; Получаем карту памяти (E820)
+    ; карта памяти
     mov di, MEM_MAP_ENTRIES + 2
     xor ebx, ebx
     mov edx, 0x534D4150
@@ -38,7 +38,6 @@ start:
 .e820_done:
     cmp word [MEM_MAP_ENTRIES], 0
     jne .load_kernel
-    ; Заглушка
     mov di, MEM_MAP_ENTRIES + 2
     mov dword [di], 0
     mov dword [di+4], 0
@@ -58,7 +57,6 @@ start:
     int 0x13
     jc disk_error
 
-    ; Переход в защищённый режим
     cli
     lgdt [gdt_descriptor]
     mov eax, cr0
@@ -96,11 +94,8 @@ init_pm:
 BOOT_DRIVE      db 0
 DISK_ERROR_MSG  db "Disk read error!",0
 
-; GDT
 gdt_start:
-gdt_null:
-    dd 0x0
-    dd 0x0
+gdt_null: dd 0, 0
 gdt_code:
     dw 0xFFFF
     dw 0x0000
@@ -124,7 +119,6 @@ gdt_descriptor:
 CODE_SEG equ gdt_code - gdt_start
 DATA_SEG equ gdt_data - gdt_start
 
-; Таблица разделов
 times 0x1BE - ($ - $$) db 0
 partition_table:
     db 0x80
