@@ -1,0 +1,185 @@
+SacramentuOS — инструкция по сборке и запуску
+=============================================
+
+Что это
+-------
+SacramentuOS — учебная минимальная консольная ОС для x86/i386.
+Она написана на C и GNU Assembly, загружается через GRUB по Multiboot v1,
+работает в VGA text mode 80x25, имеет PIT-таймер, IRQ-клавиатуру и встроенную shell-консоль.
+
+Это не замена Linux/Windows и не полноценная современная ОС. Это рабочий стартовый проект,
+который можно запускать в QEMU и записывать на флешку как ISO-образ.
+
+Ограничения
+-----------
+1. Основной режим: BIOS/Legacy/CSM. На некоторых UEFI-only компьютерах запуск с флешки может не сработать.
+2. Раскладка клавиатуры в ядре: US QWERTY.
+3. Файловая система внутри ОС виртуальная/демонстрационная: команды ls/cat показывают встроенные псевдофайлы.
+4. USB-запись полностью стирает выбранный носитель. Проверяй имя устройства очень внимательно.
+
+Структура проекта
+-----------------
+boot/grub/grub.cfg       — меню GRUB
+include/                 — заголовочные файлы ядра
+src/boot.S               — Multiboot header и стартовый Assembly-код
+src/interrupt.S          — stubs для ISR/IRQ
+src/*.c                  — ядро, VGA, клавиатура, таймер, shell, RTC, string utils
+linker.ld                — linker script
+Makefile                 — сборка kernel + ISO
+scripts/run_qemu.sh      — быстрый запуск QEMU на Linux
+scripts/write_usb_arch.sh — безопасная обёртка для записи ISO на флешку в Arch/Linux
+
+Команды внутри SacramentuOS
+---------------------------
+help, docs, commands, find, clear, cls, fetch, sysinfo, about, echo, uname, whoami,
+mem, uptime, ticks, date, time, calc, color, colors, theme, history, len, upper,
+lower, reverse, repeat, sleep, ascii, hexdump, ls, cat, pwd, ver, env, set, get,
+unset, note, notes, noteclr, todo, done, todoclr, base, hash, rot13, count, grep,
+head, wc, edit, files, show, rm, ps, top, kernel, log, shutdown, reboot, halt.
+
+Новые функции версии 0.2.3:
+- плотный help/docs без лишних пустых строк;
+- полноэкранный RAM-редактор edit;
+- стрелки, Home, End, Enter, Backspace, Delete внутри редактора;
+- F7 сохраняет, F8 сохраняет и выходит, F9 выходит без сохранения;
+- Ctrl+C отменяет ввод, sleep и редактор;
+- лимиты редактора: 8 RAM-файлов, 64 строки, 119 символов на строку.
+
+Сборка на Arch Linux
+--------------------
+1. Установи зависимости:
+
+   sudo pacman -S --needed base-devel qemu-system-x86 grub xorriso mtools git
+
+2. Установи i686-elf-gcc и i686-elf-binutils.
+   Самый простой способ — AUR helper, например yay:
+
+   yay -S i686-elf-gcc i686-elf-binutils
+
+   Если AUR helper не установлен, можно собрать эти пакеты из AUR вручную
+   или использовать обычный gcc с 32-битной сборкой, но cross-compiler надёжнее.
+
+3. Перейди в папку проекта:
+
+   cd SacramentuOS
+
+4. Собери ISO:
+
+   make clean
+   make iso
+
+   Готовый файл появится здесь:
+
+   build/SacramentuOS.iso
+
+5. Запуск в QEMU:
+
+   make run
+
+   или вручную:
+
+   qemu-system-i386 -cdrom build/SacramentuOS.iso -m 256M -serial stdio
+
+Запись на флешку в Arch/Linux
+-----------------------------
+ВНИМАНИЕ: команда ниже стирает выбранный диск. Не указывай раздел вроде /dev/sdb1,
+нужно указывать весь носитель, например /dev/sdb.
+
+1. Найди флешку:
+
+   lsblk
+
+2. Запиши ISO:
+
+   ./scripts/write_usb_arch.sh /dev/sdX
+
+   Пример:
+
+   ./scripts/write_usb_arch.sh /dev/sdb
+
+3. Перезагрузи компьютер и выбери USB-накопитель в Boot Menu.
+   Если компьютер UEFI-only, включи Legacy/CSM, если такая настройка есть.
+
+Сборка на Windows
+-----------------
+Рекомендуемый способ — WSL2, потому что сборка ОС требует Linux-инструментов GRUB/xorriso.
+
+Вариант A: Windows + WSL2 Ubuntu
+
+1. В PowerShell от администратора:
+
+   wsl --install
+
+2. Перезагрузи ПК, открой Ubuntu в WSL.
+
+3. Установи зависимости:
+
+   sudo apt update
+   sudo apt install -y build-essential gcc-multilib qemu-system-x86 grub-pc-bin grub-common xorriso mtools make
+
+4. Перейди в папку проекта. Например, если проект лежит в Downloads:
+
+   cd /mnt/c/Users/<ТВОЙ_ПОЛЬЗОВАТЕЛЬ>/Downloads/SacramentuOS
+
+5. Собери ISO обычным gcc:
+
+   make clean
+   make CC=gcc iso
+
+6. Запуск QEMU из WSL:
+
+   qemu-system-i386 -cdrom build/SacramentuOS.iso -m 256M -serial stdio
+
+Вариант B: Windows + WSL2 Arch
+
+1. Установи WSL2 и ArchWSL.
+2. В ArchWSL:
+
+   sudo pacman -Syu
+   sudo pacman -S --needed base-devel qemu-system-x86 grub xorriso mtools git
+   yay -S i686-elf-gcc i686-elf-binutils
+
+3. В папке проекта:
+
+   make clean
+   make iso
+   make run
+
+Запись ISO на флешку в Windows
+------------------------------
+1. Скопируй build/SacramentuOS.iso в Windows-папку.
+2. Открой Rufus.
+3. Выбери флешку.
+4. Выбери SacramentuOS.iso.
+5. Если Rufus спросит режим записи, выбери DD mode.
+6. Нажми Start. Все данные на флешке будут удалены.
+7. Перезагрузи ПК и выбери флешку в Boot Menu.
+
+Полезные команды Makefile
+-------------------------
+make clean     — удалить build/
+make iso       — собрать build/SacramentuOS.iso
+make run          — собрать и запустить в QEMU
+make iso-prebuilt — собрать ISO из готового prebuilt/sacramentuos.kernel без перекомпиляции исходников
+make run-prebuilt — собрать ISO из prebuilt-ядра и запустить его в QEMU
+make check        — проверить Multiboot-совместимость, если установлен grub-file
+
+Если что-то не собирается
+-------------------------
+1. Проверь, установлен ли grub-mkrescue:
+
+   grub-mkrescue --version
+
+2. Проверь, установлен ли xorriso:
+
+   xorriso -version
+
+3. Если команда grub-file не найдена, установи пакет GRUB. Без grub-file сборка ядра возможна,
+   но проверка Multiboot будет пропущена.
+
+4. Если ошибка связана с i686-elf-gcc, попробуй собрать через обычный gcc в WSL/Arch:
+
+   make clean
+   make CC=gcc iso
+
+5. Сначала всегда тестируй ISO в QEMU, и только потом записывай на флешку.

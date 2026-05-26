@@ -1,38 +1,58 @@
-# SacramentuOS v0.0.4
+# SacramentuOS 0.2.3 Compact Help IDE Keys
 
-Создатель: tikzek  
-GitHub: https://github.com/tikzek1337/SacramentuOS  
-Telegram: t.me/SacramentuOS
+Учебная 32-bit x86 ОС на C/GNU Assembly: Multiboot-ядро, VGA-консоль, PIT-таймер, PS/2-клавиатура и shell.
 
-## Новые возможности
-- **clear** — очистка экрана
-- **color** — смена цвета текста/фона, список цветов
-- **uptime** — время работы системы
-- **whoami** — вывод имени пользователя (запрашивается при старте)
-- **ram** — отображение общего и свободного объёма памяти
-- **files** — работа с файлами на постоянном диске (создание, чтение, запись, удаление)
-- Улучшенный логотип и информация о системе
+## Что изменено в 0.2.3
 
-## Команды оболочки
-- `fetch`   — информация о системе
-- `clear`   — очистить экран
-- `color <fg> <bg>` — установить цвета (0-15), `color list` — список
-- `uptime`  — время с момента загрузки
-- `whoami`  — имя пользователя
-- `ram`     — информация о памяти
-- `files`   — список всех файлов на диске
-- `create <filename>` — создать пустой файл
-- `read <filename>`   — вывести содержимое файла
-- `write <filename> <text>` — записать текст в файл
-- `delete <filename>` — удалить файл
-- `docs`    — эта справка и ссылки
-- `reboot`  — перезагрузка
-- `shutdown` — выключение
+- `help` и `docs` теперь показывают команды компактно: меньше пустых строк, меньше вложенных подкатегорий, больше полезного текста на одном экране.
+- `commands` теперь выводит команды плотной сеткой по 8 команд в строке.
+- Редактор `edit` заменён на полноэкранный RAM-редактор.
+- В редакторе работают стрелки: перемещение по строкам и символам.
+- В редакторе работают `Enter`, `Backspace`, `Delete`, `Home`, `End`.
+- Горячие клавиши редактора: `F7` — сохранить, `F8` — сохранить и выйти, `F9` — выйти без сохранения.
+- Добавлена обработка `Ctrl+C`: можно отменять ввод в shell, выходить из редактора, отменять `sleep`.
+- Лимиты редактора увеличены: 8 RAM-файлов, 64 строки на файл, 119 символов на строку.
 
-## Сборка и запуск (Arch Linux)
+## Быстрый запуск на Windows 11 через WSL
+
 ```bash
-sudo pacman -S nasm qemu-desktop git base-devel gcc-multilib
-make
-make run
+sudo apt update
+sudo apt install -y build-essential gcc-multilib make qemu-system-x86
+cd /mnt/c/Users/<ТВОЙ_ПОЛЬЗОВАТЕЛЬ>/Downloads/SacramentuOS
+make run-kernel
+```
 
-## Этот файл был написан ИИ, если что)
+Полная пересборка из исходников:
+
+```bash
+make clean
+make CC=gcc run-kernel-built
+```
+
+Если ISO зависает на `Booting from DVD/CD...`, запускай напрямую ядро:
+
+```bash
+make run-kernel
+```
+
+## Проверка внутри ОС
+
+```text
+help
+docs
+commands
+sleep 10000
+# нажать Ctrl+C
+edit main.c
+# написать код, подвигаться стрелками, F7 сохранить, F8 сохранить и выйти
+files
+show main.c
+grep return main.c
+```
+
+## Документация
+
+- `docs/TEST_WINDOWS_11_RU.txt` — подробная проверка на Windows 11.
+- `docs/FIX_BOOT_WINDOWS_11_RU.txt` — исправление зависания DVD/CD.
+- `docs/BUILD_RU.txt` — сборка проекта.
+- `docs/CHANGELOG_RU.txt` — список изменений.
