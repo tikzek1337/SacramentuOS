@@ -1,0 +1,1 @@
+help docs commands fetch mode edit files show cat rm color whoami time date clear clean reboot shutdown exit

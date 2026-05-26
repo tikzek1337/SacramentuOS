@@ -4,8 +4,8 @@
 #include <stdint.h>
 
 #define OS_NAME "SacramentuOS"
-#define OS_VERSION "0.2.3"
-#define OS_CODENAME "Compact Help IDE Keys"
+#define OS_VERSION "0.3.3"
+#define OS_CODENAME "Command Clean"
 #define OS_ARCH "i386"
 #define OS_BUILD_TYPE "freestanding C + GNU Assembly"
 

@@ -19,9 +19,6 @@ static char username[USERNAME_MAX] = "user";
 static char prompt[PROMPT_MAX] = "user@sacramentuOS> ";
 static vga_color_t shell_accent = VGA_COLOR_LIGHT_GREEN;
 
-#define ENV_MAX 8
-#define ENV_KEY_MAX 16
-#define ENV_VALUE_MAX 64
 #define NOTE_MAX 8
 #define NOTE_LEN 120
 #define TODO_MAX 8
@@ -36,9 +33,6 @@ static vga_color_t shell_accent = VGA_COLOR_LIGHT_GREEN;
 #define EDIT_SCREEN_PREFIX 5
 #define EDIT_VISIBLE_COLS (VGA_WIDTH - EDIT_SCREEN_PREFIX)
 
-static char env_keys[ENV_MAX][ENV_KEY_MAX] = {"USER", "SHELL"};
-static char env_values[ENV_MAX][ENV_VALUE_MAX] = {"user", "/bin/sacramentu-sh"};
-static int env_count = 2;
 
 static char notes[NOTE_MAX][NOTE_LEN];
 static int note_count = 0;
@@ -68,7 +62,7 @@ static void cmd_docs(char* args);
 static void cmd_commands(char* args);
 static void cmd_find(char* args);
 static void cmd_clear(char* args);
-static void cmd_cls(char* args);
+static void cmd_clean(char* args);
 static void cmd_fetch(char* args);
 static void cmd_about(char* args);
 static void cmd_echo(char* args);
@@ -89,17 +83,12 @@ static void cmd_upper(char* args);
 static void cmd_lower(char* args);
 static void cmd_reverse(char* args);
 static void cmd_repeat(char* args);
-static void cmd_sleep(char* args);
 static void cmd_ascii(char* args);
 static void cmd_hexdump(char* args);
 static void cmd_ls(char* args);
 static void cmd_cat(char* args);
 static void cmd_pwd(char* args);
 static void cmd_ver(char* args);
-static void cmd_env(char* args);
-static void cmd_set(char* args);
-static void cmd_get(char* args);
-static void cmd_unset(char* args);
 static void cmd_note(char* args);
 static void cmd_notes(char* args);
 static void cmd_noteclr(char* args);
@@ -110,9 +99,6 @@ static void cmd_base(char* args);
 static void cmd_hash(char* args);
 static void cmd_rot13(char* args);
 static void cmd_count(char* args);
-static void cmd_grep(char* args);
-static void cmd_head(char* args);
-static void cmd_wc(char* args);
 static void cmd_ps(char* args);
 static void cmd_top(char* args);
 static void cmd_kernel(char* args);
@@ -131,7 +117,7 @@ static command_t commands[] = {
     {"commands","compact command index", cmd_commands},
     {"find",    "search command names/help text: find time", cmd_find},
     {"clear",   "clear the screen", cmd_clear},
-    {"cls",     "alias for clear", cmd_cls},
+    {"clean",   "alias for clear", cmd_clean},
     {"fetch",   "show full SacramentuOS system information", cmd_fetch},
     {"sysinfo", "alias for fetch", cmd_fetch},
     {"about",   "short description of the OS", cmd_about},
@@ -144,8 +130,7 @@ static command_t commands[] = {
     {"date",    "show RTC date", cmd_date},
     {"time",    "show RTC time", cmd_time},
     {"calc",    "simple math: calc 40 + 2", cmd_calc},
-    {"color",   "set prompt/logo color: color green or color 10", cmd_color},
-    {"colors",  "list VGA color codes", cmd_colors},
+    {"color",   "set prompt/logo color: color list | color 10 | color green", cmd_color},
     {"theme",   "set theme: theme green|amber|white|cyan", cmd_theme},
     {"history", "show typed command history", cmd_history},
     {"len",     "count characters: len text", cmd_len},
@@ -153,17 +138,12 @@ static command_t commands[] = {
     {"lower",   "convert text to lowercase", cmd_lower},
     {"reverse", "reverse text", cmd_reverse},
     {"repeat",  "repeat text: repeat 3 hi", cmd_repeat},
-    {"sleep",   "pause in milliseconds: sleep 500", cmd_sleep},
     {"ascii",   "show printable ASCII table", cmd_ascii},
     {"hexdump", "hex-dump text: hexdump hello", cmd_hexdump},
     {"ls",      "list virtual files", cmd_ls},
     {"cat",     "show virtual/RAM file: cat /etc/os-release", cmd_cat},
     {"pwd",     "show current virtual path", cmd_pwd},
     {"ver",     "show version", cmd_ver},
-    {"env",     "list RAM environment variables", cmd_env},
-    {"set",     "set RAM variable: set USER Fernando", cmd_set},
-    {"get",     "read RAM variable: get USER", cmd_get},
-    {"unset",   "remove RAM variable: unset name", cmd_unset},
     {"note",    "RAM notes: note add|list|clear", cmd_note},
     {"notes",   "list RAM notes", cmd_notes},
     {"noteclr", "clear RAM notes", cmd_noteclr},
@@ -174,9 +154,6 @@ static command_t commands[] = {
     {"hash",    "FNV-1a checksum for text", cmd_hash},
     {"rot13",   "ROT13-transform text", cmd_rot13},
     {"count",   "count characters and words", cmd_count},
-    {"grep",    "search virtual file: grep OS /etc/os-release", cmd_grep},
-    {"head",    "print first lines of virtual/RAM file", cmd_head},
-    {"wc",      "count lines/words/chars in virtual/RAM file", cmd_wc},
     {"edit",    "full-screen RAM code editor: edit main.c", cmd_edit},
     {"files",   "list RAM editor files", cmd_files},
     {"show",    "show RAM/virtual file: show main.c", cmd_show},
@@ -223,18 +200,6 @@ static void set_username(const char* raw) {
         username[out] = '\0';
     }
     update_prompt();
-    int idx = -1;
-    for (int i = 0; i < env_count; i++) {
-        if (strcmp(env_keys[i], "USER") == 0) idx = i;
-    }
-    if (idx < 0 && env_count < ENV_MAX) {
-        idx = env_count++;
-        strcpy(env_keys[idx], "USER");
-    }
-    if (idx >= 0) {
-        strncpy(env_values[idx], username, ENV_VALUE_MAX - 1);
-        env_values[idx][ENV_VALUE_MAX - 1] = '\0';
-    }
 }
 
 static int color_from_arg(char* args, vga_color_t* out) {
@@ -284,12 +249,6 @@ static void log_event(const char* text) {
     syslog_buf[SYSLOG_MAX - 1][SYSLOG_LEN - 1] = '\0';
 }
 
-static int env_find(const char* key) {
-    for (int i = 0; i < env_count; i++) {
-        if (strcmp(env_keys[i], key) == 0) return i;
-    }
-    return -1;
-}
 
 static uint32_t parse_uint_any(const char* s) {
     uint32_t value = 0;
@@ -331,7 +290,7 @@ static const char* virtual_file_content(const char* path) {
         "help/docs: compact command guide; commands: command index; find <word>: search\n"
         "editor: edit <file>; arrows move; F7 save; F8 save+exit; F9 discard; Ctrl+C abort\n"
         "system: fetch top kernel ps mem uptime ticks date time uname whoami ver\n"
-        "files: ls cat grep head wc files show rm; ram: env set get unset note todo done\n";
+        "files: ls cat files show rm; tasks: note todo done\n";
     static const char cpuinfo[] =
         "processor: 0\n"
         "arch: i386 protected mode\n"
@@ -534,14 +493,14 @@ static void cmd_docs(char* args) {
     terminal_setfg(VGA_COLOR_LIGHT_GREY);
     terminal_draw_rule('-');
     kprintf("system : fetch top kernel ps mem uptime ticks date time uname whoami ver\n");
-    kprintf("files  : ls cat <file> grep <term> <file> head <file> wc <file> files show rm\n");
+    kprintf("files  : ls cat <file> files show rm pwd\n");
     kprintf("editor : edit <file>  arrows move  Enter newline  Backspace/Delete edit\n");
     kprintf("         F7 save  F8 save+exit  F9 exit without saving  Ctrl+C abort\n");
-    kprintf("ram    : env set/get/unset  note add/list/clear  todo add/list/clear  done N\n");
+    kprintf("tasks  : note add/list/clear  todo add/list/clear  done N\n");
     kprintf("text   : calc len count upper lower reverse repeat base hash rot13 hexdump ascii\n");
-    kprintf("look   : color <name|0..15>  colors  theme green|amber|white|cyan  clear cls\n");
+    kprintf("look   : color list  color <name|0..15>  theme green|amber|white|cyan  clear clean\n");
     kprintf("power  : reboot halt shutdown\n");
-    kprintf("examples: edit main.c | color green | set USER admin | grep OS /etc/os-release\n");
+    kprintf("examples: edit main.c | color list | color 10 | color green | cat /etc/os-release\n");
 }
 
 static void cmd_commands(char* args) {
@@ -575,7 +534,7 @@ static void cmd_clear(char* args) {
     terminal_clear();
 }
 
-static void cmd_cls(char* args) {
+static void cmd_clean(char* args) {
     cmd_clear(args);
 }
 
@@ -685,9 +644,14 @@ static void cmd_calc(char* args) {
 }
 
 static void cmd_color(char* args) {
+    args = trim_left(args);
+    if (strcmp(args, "list") == 0) {
+        cmd_colors(args);
+        return;
+    }
     vga_color_t c;
     if (!color_from_arg(args, &c)) {
-        kprintf("usage: color <0..15|green|amber|white|cyan|red|blue|magenta|grey>\n");
+        kprintf("usage: color list | color <0..15|green|amber|white|cyan|red|blue|magenta|grey>\n");
         return;
     }
     shell_set_accent(c);
@@ -764,25 +728,6 @@ static void cmd_repeat(char* args) {
     for (int i = 0; i < count; i++) kprintf("%s\n", cursor);
 }
 
-static void cmd_sleep(char* args) {
-    int ms = atoi(args);
-    if (ms < 1) ms = 1;
-    if (ms > 30000) ms = 30000;
-    uint32_t ticks = ((uint32_t)ms * TIMER_HZ) / 1000;
-    if (ticks == 0) ticks = 1;
-    uint32_t end = timer_ticks() + ticks;
-    keyboard_clear_cancel();
-    kprintf("sleeping %d ms... Ctrl+C cancels\n", ms);
-    while (timer_ticks() < end) {
-        if (keyboard_cancel_requested()) {
-            keyboard_flush();
-            kprintf("cancelled by Ctrl+C\n");
-            return;
-        }
-        cpu_halt();
-    }
-    kprintf("awake\n");
-}
 
 static void cmd_ascii(char* args) {
     (void)args;
@@ -1198,71 +1143,15 @@ static void cmd_pwd(char* args) {
 
 static void cmd_ver(char* args) {
     (void)args;
-    kprintf("%s version %s, codename %s\n", OS_NAME, OS_VERSION, OS_CODENAME);
+    kprintf("%s\n", OS_NAME);
+    kprintf("version: %s\n", OS_VERSION);
+    kprintf("last build: %s %s\n", __DATE__, __TIME__);
+    kprintf("last update: 2026-05-26\n");
 }
 
 
-static void cmd_env(char* args) {
-    (void)args;
-    if (env_count == 0) {
-        kprintf("environment is empty. Use: set <key> <value>\n");
-        return;
-    }
-    for (int i = 0; i < env_count; i++) kprintf("%s=%s\n", env_keys[i], env_values[i]);
-}
 
-static void cmd_set(char* args) {
-    char* cursor = args;
-    char* key = next_token(&cursor);
-    cursor = trim_left(cursor);
-    if (!key || !cursor[0]) {
-        kprintf("usage: set <key> <value>\n");
-        return;
-    }
-    if (strlen(key) >= ENV_KEY_MAX) {
-        kprintf("key is too long; max %d characters\n", ENV_KEY_MAX - 1);
-        return;
-    }
-    int idx = env_find(key);
-    if (idx < 0) {
-        if (env_count >= ENV_MAX) {
-            kprintf("environment is full; unset a key first\n");
-            return;
-        }
-        idx = env_count++;
-        strncpy(env_keys[idx], key, ENV_KEY_MAX - 1);
-        env_keys[idx][ENV_KEY_MAX - 1] = '\0';
-    }
-    strncpy(env_values[idx], cursor, ENV_VALUE_MAX - 1);
-    env_values[idx][ENV_VALUE_MAX - 1] = '\0';
-    if (strcmp(key, "USER") == 0 || strcmp(key, "user") == 0) {
-        set_username(cursor);
-        kprintf("set USER=%s and updated prompt\n", username);
-        return;
-    }
-    kprintf("set %s=%s\n", env_keys[idx], env_values[idx]);
-}
 
-static void cmd_get(char* args) {
-    args = trim_left(args);
-    if (!args[0]) { kprintf("usage: get <key>\n"); return; }
-    int idx = env_find(args);
-    if (idx < 0) { kprintf("not set: %s\n", args); return; }
-    kprintf("%s\n", env_values[idx]);
-}
-
-static void cmd_unset(char* args) {
-    args = trim_left(args);
-    if (!args[0]) { kprintf("usage: unset <key>\n"); return; }
-    int idx = env_find(args);
-    if (idx < 0) { kprintf("not set: %s\n", args); return; }
-    for (int i = idx + 1; i < env_count; i++) {
-        strcpy(env_keys[i - 1], env_keys[i]);
-        strcpy(env_values[i - 1], env_values[i]);
-    }
-    env_count--;
-    kprintf("unset %s\n", args);
-}
 
 static void cmd_notes(char* args) {
     (void)args;
@@ -1386,93 +1275,14 @@ static void cmd_count(char* args) {
     kprintf("chars=%d words=%d\n", chars, words);
 }
 
-static void cmd_grep(char* args) {
-    char* cursor = args;
-    char* term = next_token(&cursor);
-    cursor = trim_left(cursor);
-    if (!term || !cursor[0]) { kprintf("usage: grep <term> <file>\n"); return; }
 
-    int ridx = ram_file_find(cursor);
-    if (ridx >= 0) {
-        int matches = 0;
-        for (int i = 0; i < edit_line_counts[ridx]; i++) {
-            if (contains_text(edit_lines[ridx][i], term)) { kprintf("%s\n", edit_lines[ridx][i]); matches++; }
-        }
-        if (!matches) kprintf("no matches\n");
-        return;
-    }
 
-    const char* data = virtual_file_content(cursor);
-    if (!data) { kprintf("file not found. Try: ls or files\n"); return; }
-    int matches = 0;
-    const char* line = data;
-    while (*line) {
-        const char* endp = line;
-        while (*endp && *endp != '\n') endp++;
-        char temp[128];
-        size_t len = (size_t)(endp - line);
-        if (len >= sizeof(temp)) len = sizeof(temp) - 1;
-        for (size_t i = 0; i < len; i++) temp[i] = line[i];
-        temp[len] = '\0';
-        if (contains_text(temp, term)) { kprintf("%s\n", temp); matches++; }
-        line = *endp == '\n' ? endp + 1 : endp;
-    }
-    if (!matches) kprintf("no matches\n");
-}
-
-static void cmd_head(char* args) {
-    args = trim_left(args);
-    if (!args[0]) { kprintf("usage: head <file>\n"); return; }
-    int ridx = ram_file_find(args);
-    if (ridx >= 0) {
-        int max = edit_line_counts[ridx] < 3 ? edit_line_counts[ridx] : 3;
-        for (int i = 0; i < max; i++) kprintf("%s\n", edit_lines[ridx][i]);
-        return;
-    }
-    const char* data = virtual_file_content(args);
-    if (!data) { kprintf("file not found. Try: ls or files\n"); return; }
-    int lines = 0;
-    for (size_t i = 0; data[i] && lines < 3; i++) {
-        terminal_putchar(data[i]);
-        if (data[i] == '\n') lines++;
-    }
-}
-
-static void cmd_wc(char* args) {
-    args = trim_left(args);
-    if (!args[0]) { kprintf("usage: wc <file>\n"); return; }
-    int lines = 0, words = 0, chars = 0, in_word = 0;
-    int ridx = ram_file_find(args);
-    if (ridx >= 0) {
-        for (int l = 0; l < edit_line_counts[ridx]; l++) {
-            lines++;
-            for (size_t i = 0; edit_lines[ridx][l][i]; i++) {
-                chars++;
-                if (is_space(edit_lines[ridx][l][i])) in_word = 0;
-                else if (!in_word) { words++; in_word = 1; }
-            }
-            chars++;
-            in_word = 0;
-        }
-        kprintf("lines=%d words=%d chars=%d %s\n", lines, words, chars, args);
-        return;
-    }
-    const char* data = virtual_file_content(args);
-    if (!data) { kprintf("file not found. Try: ls or files\n"); return; }
-    for (size_t i = 0; data[i]; i++) {
-        chars++;
-        if (data[i] == '\n') lines++;
-        if (is_space(data[i])) in_word = 0;
-        else if (!in_word) { words++; in_word = 1; }
-    }
-    kprintf("lines=%d words=%d chars=%d %s\n", lines, words, chars, args);
-}
 
 static void cmd_ps(char* args) {
     (void)args;
     kprintf("PID  STATE   NAME\n");
     kprintf("1    run     kernel\n");
-    kprintf("2    sleep   idle\n");
+    kprintf("2    idle    idle\n");
     kprintf("3    run     sacramentu-shell\n");
 }
 
@@ -1480,8 +1290,8 @@ static void cmd_top(char* args) {
     (void)args;
     uint32_t total = g_mem_lower_kb + g_mem_upper_kb;
     kprintf("SacramentuOS top - uptime %u sec, ticks %u\n", timer_seconds(), timer_ticks());
-    kprintf("memory: %u KB total, shell buffers: history=%d env=%d notes=%d todo=%d\n", total, history_count, env_count, note_count, todo_count);
-    kprintf("tasks: 3 total, 2 running, 1 sleeping\n");
+    kprintf("memory: %u KB total, shell buffers: history=%d notes=%d todo=%d files=%d\n", total, history_count, note_count, todo_count, edit_file_count);
+    kprintf("tasks: 3 total, 2 running, 1 idle\n");
 }
 
 static void cmd_kernel(char* args) {

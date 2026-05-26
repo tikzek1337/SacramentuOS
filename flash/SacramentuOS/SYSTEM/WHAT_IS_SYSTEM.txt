@@ -1,0 +1,1 @@
+BOOTX64.EFI contains the native SacramentuOS shell and RAM editor. No ISO is required for UEFI boot.
