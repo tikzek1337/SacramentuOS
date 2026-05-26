@@ -1,0 +1,1 @@
+Mouse click/drag F1 Start F2 Explorer F3 Console F4 About F5 Settings F6 Code F7 GPUx help commands fetch calc edit code files show rm note todo gpux theme reboot shutdown

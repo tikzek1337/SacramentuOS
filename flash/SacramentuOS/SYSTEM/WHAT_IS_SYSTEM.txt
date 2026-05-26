@@ -1,0 +1,1 @@
+BOOTX64.EFI contains the native SacramentuOS GOP pixel desktop with windows, Explorer, Console, Code Studio, GPUx, Settings themes, UEFI pointer protocols and raw PS/2 mouse fallback. USB host-controller PCI probing is included; full raw USB HID transfers are not enabled yet. No ISO is required for UEFI boot.
